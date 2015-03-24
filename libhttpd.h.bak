@@ -1,0 +1,166 @@
+#ifndef _LIBHTTPD_H_
+#define _LIBHTTPD_H_
+
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/param.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+#ifndef MIN
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef NEW
+#define NEW(t, n) ((t*)malloc(sizeof(t) * (n)))
+#endif
+
+#ifndef RENEW
+#define RENEW(o, t, n) ((t*)realloc((void*)o, sizeof(t) * (n)))
+#endif
+
+//httpd struct
+typedef struct
+{
+	char* hostname;                    //host name
+	struct in_addr host_addr;          //host ip
+	int port;                          //host port
+	char* cgi_pattern;
+	char* cwd;
+	int listen_fd;                     //listen file descriptor
+	FILE* logfp;                       //log file fd
+	int no_symlinks;
+	int vhost;
+} httpd_server;
+
+typedef struct 
+{
+	int initialized;                         //initialized flag;
+	httpd_server* hs;                        //server struct pointer
+	struct in_addr client_addr;				 //client ip
+	char* read_buf;							 //read buf
+	int read_size, read_idx, checked_idx;    //read buf param
+	int checked_state;
+	int method;								 //method of request
+	int status;								 //status of response
+	off_t bytes;							 //
+	char* encodeurl;						 //encode url of request
+	char* decodeurl;						 //decode url of request
+	char* protocol;							 //protocol of request
+	char* origfilename;						 
+	char* expnfilename;
+	char* encodings;
+	char* pathinfo; 						 //path of request
+	char* query;							 //query string of request
+	char* referer;
+	char* useragent;						 //user agent of request
+	char* accept;							 //accept of request
+	char* accepte;							 //accepte of request
+	char* cookie;							 //cookie of request
+	char* contenttype;						 //contenttype of request
+	char* reqhost;						
+	char* hdrhost;
+	char* authorization;
+	char* remoteuser;
+	char* response;							//response buf
+	int maxdecodedurl, maxorigfilename, maxexpnfilename, maxencodings,
+		maxpathinfo, maxquery, maxaccept, maxaccepte, maxreqhost, 
+		maxremoteuser, maxresponse;
+	char* altdir;
+	int maxaltdir;
+
+	int responselen;						//response len of response buf
+	time_t if_modified_since, range_if;
+	off_t contentlength;					//content length of the request
+	char* type;								//
+	char* hostname;
+	int mime_flag;							//mime flag of the response
+	int one_one;
+	int got_range;
+	int tildemapped;
+	off_t init_byte_loc, end_byte_loc;
+	int keep_alive;
+	int should_linger;
+	struct stat sb;
+	int conn_fd;							//conn fd
+	char* file_address;
+} httpd_conn;
+
+//method define
+#define METHOD_GET 1
+#define METHOD_HEAD 2
+#define METHOD_POST 3
+
+//status for check
+#define CHST_FIRSTWORD 0
+#define CHST_FIRSTTWS 1
+#define CHST_SECONDWORD 2
+#define CHST_SECONDDWS 3
+#define CHST_THIRDWORD 4
+#define CHST_LINE 5
+#define CHST_LF 6
+#define CHST_CR 7
+#define CHST_CRLF 8
+#define CHST_CRLFCR 9
+#define CHST_BOGUS 10
+
+//init the server struct
+extern httpd_server* http_initialize(char* hostname, u_int addr, int port,
+		char* cgi_pattern, char* cwd, FILE* logfp, int no_symlinks, int vhost);
+
+//change the log fp of the server
+extern void httpd_set_logfp(httpd_server* hs, FILE* logfp);
+
+//shut down the server
+extern void httpd_terminate(httpd_server* hs);
+
+//server get the conn, accept and create the http_conn struct
+extern int httpd_get_conn(httpd_server* hs, httpd_conn* hc);
+#define GC_FAIL 0
+#define GC_OK 1
+#define GC_NO_MORE 2
+
+//server get the request from the client and check
+extern int httpd_got_request(httpd_conn* hc);
+#define GR_NO_REQUEST 0
+#define GR_GOT_REQUEST 1
+#define GR_BAD_REQUEST 2
+
+//server parse the request from the client
+extern int httpd_parse_request(http_conn* hc);
+
+//server get the response data ready
+extern int httpd_start_request(httpd_conn* hc);
+
+//server write back the response to the client
+extern void httpd_write_response(http_conn* hc);
+
+//server close the finished connection
+extern void httpd_close_conn(httpd_conn* hc);
+
+//server destory the finished connection struct 
+extern void httpd_destroy_conn(httpd_conn* hc);
+
+//server send the err msg to the client
+extern void httpd_send_err(httpd_conn* hc, int status, char* title, char* form, char* arg);
+
+extern char* httpd_err400title;
+extern char* httpd_err400form;
+extern char* httpd_err408title;
+extern char* httpd_err408form;
+extern char* httpd_err503title;
+extern char* httpd_err503form;
+
+//get the method string from the method number
+extern char* httpd_method_str(int method);
+
+//realloc the str 
+extern void httpd_realloc_str(char** strP, int* maxsizeP, int size);
+
+#endif
